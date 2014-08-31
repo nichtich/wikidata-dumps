@@ -1,0 +1,26 @@
+#!/usr/bin/env perl
+# Extract all Wikidata statements with string values
+use v5.14;
+use Catmandu::Importer::JSON;
+use Catmandu::Exporter::CSV;
+
+my $out = Catmandu::Exporter::CSV->new();
+
+Catmandu::Importer::JSON->new( multiline => 1 )->each(sub {
+    my ($entity) = @_;
+    my $id = $_[0]->{id};
+    while (my ($property, $values) = each %{$_[0]->{claims}}) {
+        # ignores rank and qualifiers
+        foreach (@$values) {
+            my $snak = $_->{mainsnak};
+            next unless $snak->{datatype} eq 'string';
+            $out->add({ 
+                id => $id,
+                property => $property,
+                value => $snak->{datavalue}->{value},
+            });
+        }
+    }
+});
+
+$out->commit;
